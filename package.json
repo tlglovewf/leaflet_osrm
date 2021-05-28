@@ -1,0 +1,17 @@
+{
+  "name": "leaflet",
+  "version": "1.0.0",
+  "main": "leaflet.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http": "^0.0.1-security",
+    "leaflet": "^1.7.1",
+    "uniq": "^1.0.1"
+  },
+  "devDependencies": {},
+  "description": ""
+}

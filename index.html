@@ -1,0 +1,109 @@
+<!-- 引入 文件 -->
+<link rel="stylesheet" href="./leaflet.css" />
+<script src="./leaflet.js"> </script>
+<script type="text/javascript" src="index.js"></script>
+<!-- 增加地图高度 -->
+<style>
+        #mapDiv {
+                left:   20px;
+                height: 800px;
+                width: 1800px
+        }
+
+        #files {
+                height: 20px;
+                width: 200px;
+        }
+ 
+        #btopen {
+                height: 30px;
+                width: 80px;
+        }
+        /* #choose{
+                height: 30px;
+                width: 30px;
+        } */
+</style>
+<!-- 创建一个 地图的div id 必须有 但是自定义 -->
+<div id="mapDiv"></div>
+<input id="files" multiple="multiple" />
+<input id="choose" type="file" />
+<input id="btopen" type="button" value="Load" />
+<input id="httpget" type="button" value="http"/>
+<script>
+        //到 mapbox 官网注册并创建下面的access token都是免费的，不过有5w次的浏览限制
+        var url = 'https://a.tile.openstreetmap.de/{z}/{x}/{y}.png';
+        //初始化 地图
+        var leafletMap = L.map('mapDiv').setView([45, 123], 5);
+
+        //将图层加载到地图上，并设置最大的聚焦还有map样式
+        L.tileLayer(url, {
+                zoom: 15
+        }).addTo(leafletMap);
+
+        leafletMap.panTo([52.517882, 13.386342]);
+        leafletMap.setZoom(15);
+
+     
+        L.marker(L.latLng(52.517037, 13.388860)).addTo(leafletMap).bindPopup(L.latLng(52.517037, 13.388860).toString()).openPopup();
+        L.marker(L.latLng(52.523219, 13.428555)).addTo(leafletMap).bindPopup(L.latLng(52.523219, 13.428555).toString()).openPopup();
+        L.marker(L.latLng(52.523215, 13.418555)).addTo(leafletMap).bindPopup(L.latLng(52.523215, 13.418555).toString()).openPopup();
+        L.marker(L.latLng(52.529407, 13.397634)).addTo(leafletMap).bindPopup(L.latLng(52.529407, 13.397634).toString()).openPopup();
+
+        var routes = new Array();
+        
+        var btn = document.getElementById('btopen');
+        btn.onclick = function () {
+                var selectedFile = document.getElementById('choose').files[0];
+                if(selectedFile == null)
+                        return;
+                var name = selectedFile.name; //读取选中文件的文件名
+                var size = selectedFile.size; //读取选中文件的大小
+
+                var reader = new FileReader();
+                reader.readAsText(selectedFile);
+                reader.onload = function (e) {
+                        var text = reader.result;
+                        var json = JSON.parse(text);
+                        for (var i = 0; i < json.coordinates.length; i++) {
+                                var item = new Array();
+                                var v = json.coordinates[i].toString().split(',');
+                                item[0] = parseFloat(v[1]);
+                                item[1] = parseFloat(v[0]);
+                                routes[i] = item;
+                        }
+                        L.polyline(routes, { opacity: 1, color: 'green', weight: 10 }).addTo(leafletMap);
+                }
+        }
+
+        
+
+        //为点击地图的事件 增加popup
+        var popup = L.popup();
+        function onMapClick(e) {
+
+                //  L.marker(e.latlng).addTo(leafletMap).bindPopup(e.latlng.toString()).openPopup();
+        }
+        function onMapDoubleClick(e) {
+                // leafletMap.panTo([38.8995,-77.0269]);
+        }
+        leafletMap.on('click', onMapClick);
+        leafletMap.on("dblclick", onMapDoubleClick);
+
+        var btnhttp = document.getElementById('httpget');
+        btnhttp.onclick = function () {
+                alert("do");
+        const http = require('http');
+
+        http.get("http://127.0.0.1:5000/trip/v1/driving/13.388860,52.517037;13.397634,52.529407;13.428555,52.523219;13.418555,52.523215",(res)=>{
+                const{statusCode} = res;
+                const contentType = res.headers['content-type'];
+                
+                let error;
+                if(statusCode == 200)
+                {
+                        
+                }
+        });
+        }
+</script>
