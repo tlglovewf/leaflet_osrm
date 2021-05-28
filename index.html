@@ -2,153 +2,66 @@
 <link rel="stylesheet" href="./leaflet.css" />
 <script src="./leaflet.js"> </script>
 <script type="text/javascript" src="index.js"></script>
+<script type="text/javascript" src="style.js"></script>
 <!-- 增加地图高度 -->
 <style>
+        #mapDiv {
+                height: 90%;
+                width: 100%
+        }
          #label{
                 left: 0;
                 top: 0;
                 height: 30px;
                 width: 300px;
+                color: #ff0000;
         } 
-         #mapDiv {
-                left: 20px;
-                height: 800px;
-                width: 1800px
-        }
-/*
-        #files {
-                height: 20px;
-                width: 200px;
-        }
-
-        #btopen {
-                height: 30px;
-                width: 80px;
-        } */
-
-       
+     
+       #clear {
+               left: 350px;
+               height: 30px;
+               width: 60px;
+       }
 </style>
 <!-- 创建一个 地图的div id 必须有 但是自定义 -->
 <div id="mapDiv"></div>
-<!-- <input id="files" multiple="multiple" />
-<input id="choose" type="file" />
-<input id="btopen" type="button" value="Load" />
-<input id="httpget" type="button" value="http" /> -->
 <input id = "label" value="单击添加路径点,Ctrl+单击终止点"/>
+<input id = "clear" type="button"  value="Clear"/>
 <script>
+        // const routehead = "http://127.0.0.1:5000/trip/v1/driving/";
+        const routehead = "http://router.project-osrm.org/trip/v1/driving/"
+        var  coords = "";
+        const suffix = "?source=first&destination=last&roundtrip=false&geometries=geojson";
+
         //到 mapbox 官网注册并创建下面的access token都是免费的，不过有5w次的浏览限制
-        var url = 'https://a.tile.openstreetmap.de/{z}/{x}/{y}.png';
+        var url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         //初始化 地图
-        var leafletMap = L.map('mapDiv').setView([45, 123], 5);
+        var leafletMap = L.map('mapDiv').setView([52.517882, 13.386342],15);
 
         //将图层加载到地图上，并设置最大的聚焦还有map样式
-        L.tileLayer(url, {
-                zoom: 15
-        }).addTo(leafletMap);
+        L.tileLayer(url).addTo(leafletMap);
 
-        leafletMap.panTo([52.517882, 13.386342]);
-        leafletMap.setZoom(15);
-
-        //文件读取
-        // var btn = document.getElementById('btopen');
-        // btn.onclick = function () {
-        //         var selectedFile = document.getElementById('choose').files[0];
-        //         if(selectedFile == null)
-        //                 return;
-        //         var name = selectedFile.name; //读取选中文件的文件名
-        //         var size = selectedFile.size; //读取选中文件的大小
-
-        //         var reader = new FileReader();
-        //         reader.readAsText(selectedFile);
-        //         reader.onload = function (e) {
-        //                 var text = reader.result;
-        //                 var json = JSON.parse(text);
-        //                 for (var i = 0; i < json.coordinates.length; i++) {
-        //                         var item = new Array();
-        //                         var v = json.coordinates[i].toString().split(',');
-        //                         item[0] = parseFloat(v[1]);
-        //                         item[1] = parseFloat(v[0]);
-        //                         routes[i] = item;
-        //                 }
-        //                 L.polyline(routes, { opacity: 1, color: 'green', weight: 10 }).addTo(leafletMap);
-        //         }
-        // }        
-
-        // L.marker(L.latLng(52.517037, 13.388860)).addTo(leafletMap).bindPopup(L.latLng(52.517037, 13.388860).toString()).openPopup();
-        // L.marker(L.latLng(52.523219, 13.428555)).addTo(leafletMap).bindPopup(L.latLng(52.523219, 13.428555).toString()).openPopup();
-        // L.marker(L.latLng(52.523215, 13.418555)).addTo(leafletMap).bindPopup(L.latLng(52.523215, 13.418555).toString()).openPopup();
-        // L.marker(L.latLng(52.529407, 13.397634)).addTo(leafletMap).bindPopup(L.latLng(52.529407, 13.397634).toString()).openPopup();
-
-        var routes = new Array();
-        //为点击地图的事件 增加popup
-        var popup = L.popup();
         var pts = new Array();
-        // latlng[0] = L.latLng(52.529407, 13.397634);
-        // alert(latlng[0].lat.toString());
+        var needclear = false;
 
-        const greenHtmlStyles = `
-                                background-color: #11ee70;
-                                width: 2rem;
-                                height: 2rem;
-                                display: block;
-                                left: -1rem;
-                                top: -1rem;
-                                position: relative;
-                                border-radius: 3rem 3rem 0;
-                                transform: rotate(45deg);
-                                border: 1px solid #FFFFFF`;
+        var btnclear = document.getElementById('clear');
 
-        const greenIcon = L.divIcon({
-                className: "my-custom-pin",
-                iconAnchor: [0, 24],
-                labelAnchor: [-6, 0],
-                popupAnchor: [0, -36],
-                html: `<span style="${greenHtmlStyles}" />`
-        });
+        btnclear.onclick =function(){
+                for(var i = 0; i < marks.length; ++i)
+                {
+                        marks[i].remove();
+                }
+                coords = "";
+                pts = [];
+                needclear = false;
+        };
 
-        const blueHtmlStyles = `
-                                background-color: #1107ee;
-                                width: 2rem;
-                                height: 2rem;
-                                display: block;
-                                left: -1rem;
-                                top: -1rem;
-                                position: relative;
-                                border-radius: 3rem 3rem 0;
-                                transform: rotate(45deg);
-                                border: 1px solid #FFFFFF`;
-
-        const blueIcon = L.divIcon({
-                className: "my-custom-pin",
-                iconAnchor: [0, 24],
-                labelAnchor: [-6, 0],
-                popupAnchor: [0, -36],
-                html: `<span style="${blueHtmlStyles}" />`
-        });
-
-        const redHtmlStyles = `
-                                background-color: #ee1107;
-                                width: 2rem;
-                                height: 2rem;
-                                display: block;
-                                left: -1rem;
-                                top: -1rem;
-                                position: relative;
-                                border-radius: 3rem 3rem 0;
-                                transform: rotate(45deg);
-                                border: 1px solid #FFFFFF`;
-
-        const redIcon = L.divIcon({
-                className: "my-custom-pin",
-                iconAnchor: [0, 24],
-                labelAnchor: [-6, 0],
-                popupAnchor: [0, -36],
-                html: `<span style="${redHtmlStyles}" />`
-        });
-        var coords="";
+        var marks = [];
         function onMapClick(e) {
                 if (e.originalEvent.ctrlKey) {//ctrl 添加终点
-                        L.marker(e.latlng, { icon: redIcon }).addTo(leafletMap).bindPopup(e.latlng.toString()).openPopup();
+                        if(pts.length < 1)
+                                return;
+                        marks.push(L.marker(e.latlng, {icon : redIcon}).addTo(leafletMap));
                         pts.push(e.latlng);
                         for(var i = 0; i < pts.length;++i)
                         {
@@ -158,32 +71,35 @@
                                         coords += temp;
                         }
                         GetRoute();
+                        needclear = true;
                 }
                 else {
-                        L.marker(e.latlng, (pts.length < 1) ? { icon: greenIcon } : { icon: blueIcon }).addTo(leafletMap).bindPopup(e.latlng.toString()).openPopup();
+                        if(needclear)
+                        {
+                                var ret = confirm("确定清空重新添加么？");
+                                if(!ret)
+                                   return;
+                                else 
+                                   btnclear.click()
+                        }
+                                
+                        marks.push(L.marker(e.latlng, (pts.length < 1) ? { icon: greenIcon } : { icon: blueIcon }).addTo(leafletMap));
                         pts.push(e.latlng);
                 }
         }
 
 
         function onMapDoubleClick(e) {
-
+        
 
         }
         leafletMap.on('click', onMapClick);
         leafletMap.on("dblclick", onMapDoubleClick);
-
-        const routehead = "http://127.0.0.1:5000/trip/v1/driving/";
-
-
-        //const coords = "13.388860,52.517037;13.397634,52.529407;13.428555,52.523219;13.418555,52.523215";
-
-        const suffix = "?source=first&destination=last&roundtrip=false&geometries=geojson";
-
         
-        var btnhttp = document.getElementById('httpget');
-        // btnhttp.onclick = function () {
+     
+
         function GetRoute(){
+                var routes = new Array();
                 var routeurl = routehead + coords + suffix;
                 const http = require('http');
 
@@ -219,7 +135,7 @@
                                                 item[1] = parseFloat(v[0]);
                                                 routes[i] = item;
                                         }
-                                        L.polyline(routes, { opacity: 1, color: 'green', weight: 10 }).addTo(leafletMap);
+                                        marks.push(L.polyline(routes, { opacity: 1, color: 'green', weight: 10 }).addTo(leafletMap));
                                 } catch (e) {
                                         alert(e.message);
                                 }
