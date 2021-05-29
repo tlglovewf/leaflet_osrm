@@ -57,3 +57,9 @@ const greenHtmlStyles = `
                 popupAnchor: [0, -36],
                 html: `<span style="${redHtmlStyles}" />`
         });
+
+        var carIcon = L.icon({
+                iconSize: [37, 26],
+                iconAnchor: [19, 13],
+                iconUrl: './images/car.png'
+        });

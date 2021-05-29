@@ -3,102 +3,166 @@
 <script src="./leaflet.js"> </script>
 <script type="text/javascript" src="index.js"></script>
 <script type="text/javascript" src="style.js"></script>
+<script type="text/javascript" src="plugins/leaflet.polylineDecorator.js"></script>
+<script type="text/javascript" src="plugins/leaflet.animatedMarker.js"></script>
 <!-- 增加地图高度 -->
 <style>
         #mapDiv {
                 height: 90%;
                 width: 100%
         }
-         #label{
+
+        #label {
                 left: 0;
                 top: 0;
                 height: 30px;
                 width: 300px;
                 color: #ff0000;
-        } 
-     
-       #clear {
-               left: 350px;
-               height: 30px;
-               width: 60px;
-       }
+        }
+
+        #clear {
+                left: 350px;
+                height: 30px;
+                width: 60px;
+        }
+
+        .menuBar {
+                position: relative;
+                text-align: center;
+                top: 10px;
+                margin: 0 50px;
+                padding: 5px;
+                border-radius: 3px;
+                z-index: 999;
+                color: #ffffff;
+                background-color: rgba(0, 168, 0, 1);
+        }
 </style>
 <!-- 创建一个 地图的div id 必须有 但是自定义 -->
-<div id="mapDiv"></div>
-<input id = "label" value="单击添加路径点,Ctrl+单击终止点"/>
-<input id = "clear" type="button"  value="Clear"/>
+<div id="mapDiv">
+        <div id="menu" class="menuBar">
+                <input id="label" value="单击添加路径点,Ctrl+单击终止点" readonly=true />
+                <input id="btnstart" type="button" value="开始" onclick="startClick()" />
+                <input type="button" value="暂停" onclick="pauseClick()" />
+                <!-- <input type="button" value="停止" onclick="stopClick()" /> -->
+                <input id="clear" type="button" onclick="btnClear()" value="清空" autofocus=autofocus />
+        </div>
+</div>
+
+
 <script>
         // const routehead = "http://127.0.0.1:5000/trip/v1/driving/";
         const routehead = "http://router.project-osrm.org/trip/v1/driving/"
-        var  coords = "";
-        const suffix = "?source=first&destination=last&roundtrip=false&geometries=geojson";
+        var coords = "";
+        const suffix = "?source=first&destination=last&roundtrip=true&geometries=geojson";
 
         //到 mapbox 官网注册并创建下面的access token都是免费的，不过有5w次的浏览限制
         var url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         //初始化 地图
-        var leafletMap = L.map('mapDiv').setView([52.517882, 13.386342],15);
+        var leafletMap = L.map('mapDiv').setView([52.517882, 13.386342], 15);
 
         //将图层加载到地图上，并设置最大的聚焦还有map样式
         L.tileLayer(url).addTo(leafletMap);
 
         var pts = new Array();
         var needclear = false;
-
-        var btnclear = document.getElementById('clear');
-
-        btnclear.onclick =function(){
-                for(var i = 0; i < marks.length; ++i)
-                {
+        function stopBubble(e) {
+                //如果提供了事件对象，则这是一个非IE浏览器 
+                if (e && e.stopPropagation)
+                        //因此它支持W3C的stopPropagation()方法 
+                        e.stopPropagation();
+                else
+                        //否则，我们需要使用IE的方式来取消事件冒泡 
+                        window.event.cancelBubble = true; //不是e.cancelBubble
+        }
+        function btnClear() {
+                for (var i = 0; i < marks.length; ++i) {
                         marks[i].remove();
+                }
+                for (var i = 0; i < lines.length; ++i) {
+                        lines[i].remove();
                 }
                 coords = "";
                 pts = [];
+                marks = [];
+                lines = [];
+                carMarker.remove();
                 needclear = false;
+                btnstart.disabled = false;
         };
-
+        var btnStart = document.getElementById("btnstart");
         var marks = [];
+        var lines = [];
+        var markers = [];
+        var carMarker = new Object();
         function onMapClick(e) {
+                var menu = document.getElementById("menu");
+                var mwidth = menu.clientWidth;
+                var mheight = menu.clientHeight;
+                if ((e.containerPoint.x >= 0 && e.containerPoint.x < mwidth) &&
+                        (e.containerPoint.y >= 0 && e.containerPoint.y < mheight)) {
+                        return;
+                }
                 if (e.originalEvent.ctrlKey) {//ctrl 添加终点
-                        if(pts.length < 1)
+                        if (needclear)
                                 return;
-                        marks.push(L.marker(e.latlng, {icon : redIcon}).addTo(leafletMap));
+                        marks.push(L.marker(e.latlng, { icon: redIcon }).addTo(leafletMap));
                         pts.push(e.latlng);
-                        for(var i = 0; i < pts.length;++i)
-                        {
-                                var  temp = pts[i].lng.toString() + "," + pts[i].lat.toString();
-                                if(i != (pts.length - 1))
-                                        temp += ";";
-                                        coords += temp;
+                        if (needclear) {
+                                coords += ";" + e.latlng.lng.toString() + "," + e.latlng.lat.toString();;
                         }
+                        else {
+                                for (var i = 0; i < pts.length; ++i) {
+                                        var temp = pts[i].lng.toString() + "," + pts[i].lat.toString();
+                                        if (i != (pts.length - 1))
+                                                temp += ";";
+                                        coords += temp;
+                                }
+                        }
+
                         GetRoute();
                         needclear = true;
                 }
                 else {
-                        if(needclear)
-                        {
-                                var ret = confirm("确定清空重新添加么？");
-                                if(!ret)
-                                   return;
-                                else 
-                                   btnclear.click()
+                        if (needclear) {
+                                // var ret = confirm("确定清空重新添加么？");
+                                // if(!ret)
+                                //    return;
+                                // else 
+                                //    btnclear.click()
+                                return;
                         }
-                                
+
                         marks.push(L.marker(e.latlng, (pts.length < 1) ? { icon: greenIcon } : { icon: blueIcon }).addTo(leafletMap));
                         pts.push(e.latlng);
                 }
         }
 
-
-        function onMapDoubleClick(e) {
-        
-
-        }
         leafletMap.on('click', onMapClick);
-        leafletMap.on("dblclick", onMapDoubleClick);
-        
-     
 
-        function GetRoute(){
+        function startClick() {
+                if (!needclear) {
+                        alert("没有路径！！！")
+                        return;
+                }
+                btnstart.disabled = true;
+                carMarker.start();
+        }
+
+        function pauseClick() {
+                if (!needclear) {
+                        alert("没有路径！！！")
+                        return;
+                }
+                carMarker.pause();
+        }
+
+        // function stopClick() {
+        //         newLatlngs = []
+        //         carMarker.stop();
+        // }
+
+        function GetRoute() {
                 var routes = new Array();
                 var routeurl = routehead + coords + suffix;
                 const http = require('http');
@@ -115,6 +179,12 @@
                                 alert(error.message);
                                 res.resume();
                                 return;
+                        }
+                        if (lines.length > 0) {
+                                for (var i = 0; i < lines.length; ++i) {
+                                        lines[i].remove();
+                                }
+                                lines = [];
                         }
 
                         res.setEncoding('utf8');
@@ -135,7 +205,50 @@
                                                 item[1] = parseFloat(v[0]);
                                                 routes[i] = item;
                                         }
-                                        marks.push(L.polyline(routes, { opacity: 1, color: 'green', weight: 10 }).addTo(leafletMap));
+                                        var carpos = new Object();
+                                        carpos.lng = routes[0][1];
+                                        carpos.lat = routes[0][0];
+                                        var routeline = L.polyline(routes, { stroke: true, color: "#009922", opacity: 0.3, weight: 12 }).addTo(leafletMap);
+                                        carMarker = L.animatedMarker(routeline.getLatLngs(), {
+                                                icon: carIcon,
+                                                isRotate: true,
+                                                playCall: updateRealLine
+                                        }).addTo(leafletMap);
+
+                                        var newLatlngs = [routeline.getLatLngs()[0]];
+                                        // 轨迹线
+                                        var realRouteLine = L.polyline([], {
+                                                weight: 5,
+                                                color: '#FF9900'
+                                        }).addTo(leafletMap);
+                                        function updateRealLine(latlng) {
+                                                newLatlngs.push(latlng);
+                                                realRouteLine.setLatLngs(newLatlngs);
+                                        }
+                                        carMarker.over = function () {
+                                                carMarker.stop();
+                                                btnstart.disabled = false;
+                                        }
+                                        lines.push(routeline);
+                                        lines.push(realRouteLine);
+                                        // 轨迹方向箭头
+                                        lines.push(L.polylineDecorator(lines, {
+                                                patterns: [{
+                                                        repeat: 50,
+                                                        symbol: L.Symbol.arrowHead({
+                                                                pixelSize: 5,
+                                                                headAngle: 75,
+                                                                polygon: false,
+                                                                pathOptions: {
+                                                                        stroke: true,
+                                                                        weight: 2,
+                                                                        color: '#FFFFFF'
+                                                                }
+                                                        })
+                                                }]
+                                        }).addTo(leafletMap));
+
+
                                 } catch (e) {
                                         alert(e.message);
                                 }
